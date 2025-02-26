@@ -11,6 +11,7 @@ import {
 import { printOnSiteAction } from './lib/onSiteTicket';
 import { printCommandsAction } from './lib/printCommands';
 import { printshiftAction } from './lib/printShift';
+import { printCloseCashierSessionAction } from './lib/printCloseCashierSessionAction';
 
 @Injectable()
 export class PrintService {
@@ -70,6 +71,11 @@ export class PrintService {
     return tcp; // Método público para obtener solo la IP
   }
 
+  async getTerminalName() {
+    const { config } = await this.readConfig();
+    return config.deviceName; // Método público para obtener solo la IP
+  }
+
   // ocupo saber la ip
 
   async printshift(body: any) {
@@ -77,6 +83,22 @@ export class PrintService {
       const readConfig = await this.getTcpIp();
       const printer = await this.createPrinter(readConfig);
       const response = await printshiftAction(printer, body);
+      return response;
+    } catch (error) {
+      throw new NotFoundException('No se completo la impresion');
+    }
+  }
+
+  async printCloseCashierSesison(body: any) {
+    try {
+      const readConfig = await this.getTcpIp();
+      const terminalName = await this.getTerminalName();
+      const printer = await this.createPrinter(readConfig);
+      const response = await printCloseCashierSessionAction(
+        printer,
+        body,
+        terminalName,
+      );
       return response;
     } catch (error) {
       throw new NotFoundException('No se completo la impresion');

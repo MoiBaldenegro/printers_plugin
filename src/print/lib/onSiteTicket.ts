@@ -1,7 +1,6 @@
 import {
   formatearCadena,
   headInfoProducts,
-  productInfo,
   restaurantDetails,
   userInformation,
 } from '../utils/format';
@@ -11,7 +10,6 @@ export const printOnSiteAction = async (printer: any, body: any) => {
   // body es la mesa
   const date = new Date().toDateString();
   const products = body?.bill[0]?.products;
-  console.log(body.bill[0]);
 
   try {
     // Función para imprimir una imagen y manejar errores

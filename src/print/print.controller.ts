@@ -5,7 +5,12 @@ import {
   HttpException,
   HttpStatus,
   NotFoundException,
+  Options,
+  Res,
+  Req,
 } from '@nestjs/common';
+
+import { Request, Response } from 'express';
 import {
   ThermalPrinter,
   PrinterTypes,
@@ -23,11 +28,25 @@ import {
 
 import * as path from 'path';
 import { PrintService } from './print.service';
-import { printOnSiteAction } from './lib/onSiteTicket';
 
 @Controller('print')
 export class PrintController {
   constructor(private readonly printService: PrintService) {}
+  // Responde a OPTIONS para habilitar CORS
+  @Options('billPrint')
+  handleOptions(@Req() req: Request, @Res() res: Response) {
+    // Establece los encabezados de CORS
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization',
+    );
+
+    // Responde con código 204 (sin contenido)
+    res.status(204).send(); // Usamos 'status' como función, no como número
+  }
+
   @Post('ticket')
   async printTicket(@Body() data: any): Promise<string> {
     const date = new Date().toLocaleDateString(
@@ -305,6 +324,20 @@ export class PrintController {
   async printCommands(@Body() data: any): Promise<string> {
     try {
       const response = await this.printService.printCommands(data);
+      return 'Ticket impreso correctamente';
+    } catch (error) {
+      // Handle other errors
+      throw new HttpException(
+        'Error al imprimir el ticket',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('cashier-session/close')
+  async cashierSessionClose(@Body() body: any): Promise<string> {
+    try {
+      const response = await this.printService.printCloseCashierSesison(body);
       return 'Ticket impreso correctamente';
     } catch (error) {
       // Handle other errors

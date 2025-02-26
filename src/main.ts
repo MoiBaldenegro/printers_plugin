@@ -7,16 +7,15 @@ async function bootstrap() {
 
   app.enableCors({
     origin: [
-      'https://blue-river-09bdb3d0f.5.azurestaticapps.net',
       'https://tomate-pos.vercel.app',
-      'https://tomate-ksuxm5zwf-tomatepvs-projects.vercel.app',
       'http://localhost:5174',
       'http://localhost:5173',
       'http://localhost:1420',
     ],
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept',
+    allowedHeaders:
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization',
   });
 
   // Usa body-parser con límites personalizados
