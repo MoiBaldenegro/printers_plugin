@@ -6,12 +6,16 @@ import {
   ThermalPrinter,
   PrinterTypes,
   CharacterSet,
-  printer,
 } from 'node-thermal-printer';
 import { printOnSiteAction } from './lib/onSiteTicket';
 import { printCommandsAction } from './lib/printCommands';
 import { printshiftAction } from './lib/printShift';
 import { printCloseCashierSessionAction } from './lib/printCloseCashierSessionAction';
+import { printClosedBillsReports } from './lib/reports/printClosedBillsReports';
+import { printOpenCashierSession } from './lib/reports/printOpenCashierSession';
+import { printNewWithdraw } from './lib/reports/printNewWithdraw';
+import { printTestSheetAction } from './lib/health/printersTestSheet';
+import formatSellType from './lib/formatSellType';
 
 @Injectable()
 export class PrintService {
@@ -101,6 +105,7 @@ export class PrintService {
       );
       return response;
     } catch (error) {
+      console.error(error);
       throw new NotFoundException('No se completo la impresion');
     }
   }
@@ -108,27 +113,50 @@ export class PrintService {
   async printOnSiteTicket(body: any) {
     try {
       const { config } = await this.readConfig();
+      const readConfig = await this.getTcpIp();
+      const printer = await this.createPrinter(readConfig);
+      if (!printer) {
+        console.warn(`No se pudo crear la impresora para TCP: ${readConfig}`);
+        return;
+      }
+      await printOnSiteAction(printer, body);
+
       const printerArray = config.printersArray;
       const printerAuth = printerArray.filter((printer_) => {
         return printer_?.printActions?.includes('PRINT_ONSITE_ORDER_TICKET');
       });
 
-      await Promise.all(
+      await Promise.allSettled(
         printerAuth.map(async (printer_i) => {
-          const printer = await this.createPrinter(printer_i.tcp);
-          await printOnSiteAction(printer, body);
+          try {
+            const printer = await this.createPrinter(printer_i.tcp);
+            if (!printer) {
+              console.warn(
+                `No se pudo crear la impresora para TCP: ${printer_i.tcp}`,
+              );
+              return;
+            }
+            await printOnSiteAction(printer, body);
+            console.log(`Impresión exitosa en ${printer_i.printerName}`);
+          } catch (error) {
+            console.error(
+              `Error imprimiendo en impresora ${printer_i.printerName}:`,
+              error,
+            );
+          }
         }),
       );
-
-      return {
-        message: `Impresión exitosa.`,
-      };
     } catch (error) {
-      throw new NotFoundException('No se completo la impresion');
+      console.log('Entre a este error');
+      console.log(error);
+      throw new NotFoundException(`${error}`);
     }
   }
-
   async printCommands(body: any) {
+    const user = `${body.userCode} ${body.user.split(' ')[0]} ${body.user.split(' ')[1]}`;
+    const table = body?.tableNum;
+    const sellType = formatSellType(body?.sellType);
+
     try {
       const { config } = await this.readConfig();
       const printerArray = config.printersArray;
@@ -137,25 +165,96 @@ export class PrintService {
         (item) => item.active === false,
       );
 
-      printerArray?.forEach(async (item) => {
-        const currentPrinter = item;
+      await Promise.allSettled(
+        printerArray.map(async (item) => {
+          const currentPrinter = item;
 
-        const commandProductsFilter = commandProducts.filter((item_product) =>
-          currentPrinter?.associatedProducts?.includes(item_product.code),
-        );
-        try {
+          const commandProductsFilter = commandProducts.filter((item_product) =>
+            currentPrinter?.associatedProducts?.includes(item_product.code),
+          );
+
           if (commandProductsFilter.length <= 0) return;
-          const printer = await this.createPrinter(item.tcp);
-          await printCommandsAction(printer, commandProductsFilter);
-          return { message: `Impresión exitosa.` };
-        } catch (error) {
-          return { message: `Error impresion` };
-        }
-      });
+
+          try {
+            const printer = await this.createPrinter(item.tcp);
+            await printCommandsAction(
+              printer,
+              commandProductsFilter,
+              user,
+              table,
+              sellType,
+            );
+            console.log(`Impresión exitosa en ${item.printerName}`);
+          } catch (error) {
+            console.error(`Error imprimiendo en ${item.printerName}:`, error);
+          }
+        }),
+      );
 
       return {
-        message: `Impresión exitosa.`,
+        message: `Impresión terminada.`,
       };
+    } catch (error) {
+      throw new NotFoundException('No se completó la impresión');
+    }
+  }
+
+  async closedBillsService(body: any) {
+    try {
+      const readConfig = await this.getTcpIp();
+      const printer = await this.createPrinter(readConfig);
+      const response = await printClosedBillsReports(printer, body);
+      return response;
+    } catch (error) {
+      throw new NotFoundException('No se completo la impresion');
+    }
+  }
+
+  async openCashierSession(body: any) {
+    try {
+      const readConfig = await this.getTcpIp();
+      const printer = await this.createPrinter(readConfig);
+      const response = await printOpenCashierSession(printer, body);
+      return response;
+    } catch (error) {
+      throw new NotFoundException('No se completo la impresion');
+    }
+  }
+
+  async newWithdrawService(body: any) {
+    try {
+      const readConfig = await this.getTcpIp();
+      const printer = await this.createPrinter(readConfig);
+      const response = await printNewWithdraw(printer, body);
+      return response;
+    } catch (error) {
+      throw new NotFoundException('No se completo la impresion');
+    }
+  }
+
+  async printerHealth(body: any) {
+    try {
+      const { config } = await this.readConfig();
+      const printerArray = config.printersArray;
+      await Promise.allSettled(
+        printerArray.map(async (printer_i) => {
+          try {
+            const printer = await this.createPrinter(printer_i.tcp);
+            if (!printer) {
+              console.warn(
+                `No se pudo crear la impresora para TCP: ${printer_i.tcp}`,
+              );
+              return;
+            }
+            await printTestSheetAction(printer, body);
+          } catch (error) {
+            console.error(
+              `Error imprimiendo en ${printer_i.printerName}:`,
+              error,
+            );
+          }
+        }),
+      );
     } catch (error) {
       throw new NotFoundException('No se completo la impresion');
     }

@@ -1,18 +1,20 @@
-export const headInfoProducts = 'Can Producto             Precio    Importe';
+export const headInfoProducts = 'Can Producto                Precio    Importe';
 export const productInfo = '000 Product Name     $0,000.00   $0,000.00';
 
 export const restaurantDetails = [
-  'TOMATE TAQUERIA SA DE CV',
+  'TAQUERIAS MG',
   'Av.Chapultepec 361-A',
   'Col.Americana, Guadalajara, Jalisco.',
-  'Whatsapp: 333-446-5374   RFC: TTA200827EW2',
+  'Whatsapp: 33-2613-8484   RFC: TMG240319V63',
 ];
 
 export const userInformation = `Usuario: 1016 Moises Baldenegro`;
 
 export function formatearCadena(cadena, longitudDeseada, character, indicator) {
-  // Convertir cadena a string si no es una cadena
-  cadena = cadena.toString();
+  if (typeof cadena !== 'string') {
+    // Convertir cadena a string si no es una cadena
+    cadena = cadena.toString();
+  }
 
   if (indicator === 0) {
     // Rellenar con el carácter al final

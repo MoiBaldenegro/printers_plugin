@@ -1,15 +1,34 @@
-import {
-  formatearCadena,
-  headInfoProducts,
-  restaurantDetails,
-  userInformation,
-} from '../utils/format';
+import { formatToCurrency } from 'src/utils/formatToCurrency';
+import { formatearCadena, restaurantDetails } from '../utils/format';
 import { getIMagePath } from './getImage';
+import { moneyToLetter } from 'src/utils/moneyToLetter';
+import { calculateBillTotal } from '../utils/calculateTotals';
 
 export const printOnSiteAction = async (printer: any, body: any) => {
-  // body es la mesa
-  const date = new Date().toDateString();
-  const products = body?.bill[0]?.products;
+  const completeLine = (number: number) => {
+    const str = ''.padEnd(number, ' ');
+    return printer.print(str);
+  };
+  const sellType =
+    body?.sellType === 'RAPPI_ORDER'
+      ? 'RAPPI'
+      : body?.sellType === 'PHONE_ORDER'
+        ? 'PHONE'
+        : body?.sellType === 'TOGO_ORDER'
+          ? 'TOGO'
+          : 'ON_SITE';
+  const dishesIndex = body?.sellType === 'RAPPI_ORDER' ? 3 : 0;
+
+  const date = new Date().toLocaleDateString('MX-mx');
+  const products = body?.products;
+  const userName = `${body.userCode} ${body?.user}`;
+  const billCode = body?.code;
+  const checkTotal = calculateBillTotal(body.products, body.discount, sellType);
+
+  if (!Array.isArray(products) || products.length === 0) {
+    console.warn('No hay productos para imprimir en el ticket');
+    return 'No hay productos para imprimir';
+  }
 
   try {
     // Función para imprimir una imagen y manejar errores
@@ -33,87 +52,170 @@ export const printOnSiteAction = async (printer: any, body: any) => {
     printer.println(restaurantDetails[3]);
 
     printer.println(`Fecha ${date}`);
-    printer.println(userInformation);
+    printer.println(`Usuario: ${userName}`);
 
-    printer.println('');
-
-    printer.alignCenter();
-    printer.leftRight('Restaurante', '');
+    printer.newLine();
 
     printer.alignCenter();
+    printer.print(
+      `${sellType === 'RAPPI' ? 'RAPPI' : sellType === 'PHONE' ? 'TELEFONICO' : sellType === 'TOGO' ? 'PARA LLEVAR' : 'RESTAURANTE'}`.padEnd(
+        42,
+        ' ',
+      ),
+    );
+    completeLine(6);
+
     printer.bold(true);
-    printer.leftRight('Cuenta:000', 'Nota:00');
+    printer.print(`Cuenta:${billCode}`.padEnd(41, ' '));
+    if (body?.noteNumber) {
+      printer.print('Note:00');
+    } else {
+      completeLine(7);
+    }
     printer.bold(false);
+
+    printer.newLine();
 
     printer.setTextNormal();
 
     printer.println('');
 
-    printer.println(headInfoProducts);
-    printer.alignCenter();
-    await printImage(await getIMagePath('dividerTicket.png'));
+    printer.print('Can');
+    printer.print(' ');
+    printer.print(formatearCadena('Producto', 23, ' ', 0));
+    printer.print(' ');
+    printer.print(`${formatearCadena('Precio', 10, ' ', 0)}`);
+    printer.print(`${formatearCadena('Importe', 10, ' ', 0)}`);
 
-    products.forEach((item) => {
-      const productFormat = formatearCadena(item.productName, 21, ' ', 0);
+    printer.newLine();
+    const productsArray = body.products;
+    await printImage(await getIMagePath('dividerTicket.png'));
+    for (const item of productsArray) {
+      const { prices } = item;
+      const selectedPriceIndex =
+        prices.findIndex((price) => price.name === sellType) ?? 0;
+      if (
+        !item.prices ||
+        !Array.isArray(item.prices) ||
+        item.prices.length === 0
+      ) {
+        console.warn(`Producto ${item.productName} no tiene precios definidos`);
+        return;
+      }
+      const productFormat = formatearCadena(item.productName, 24, ' ', 0);
       const quantityFormat = formatearCadena(
         item.quantity.toString(),
         2,
         '0',
         1,
       );
+      const totalPrice = item.quantity * item.prices[selectedPriceIndex].price;
 
-      const totalPrice = item.quantity * item.prices[0].price;
-
-      const totalPriceFormat = formatearCadena(totalPrice, 8, ' ', 0);
-
-      const individualPrice = formatearCadena(item.prices[0].price, 8, ' ', 0);
-
-      printer.println(
-        `${quantityFormat} ${productFormat}$${individualPrice}$${totalPriceFormat}`,
+      printer.print(quantityFormat);
+      printer.print(' ');
+      printer.print(productFormat);
+      printer.print(' ');
+      printer.print(
+        `$${formatearCadena(formatToCurrency(item.prices[selectedPriceIndex].price), 8, ' ', 0)}`,
       );
-    });
+      printer.print(' ');
+      printer.print(
+        `$${formatearCadena(formatToCurrency(totalPrice), 9, ' ', 0)}`,
+      );
 
-    printer.alignCenter();
+      if (item?.discount) {
+        console.log(item.discount);
+        await printer.print(
+          `${formatearCadena(`Descuento especial:     -$${formatToCurrency(item.discount.discountedAmount)}`, 42, ' ', 0)}`,
+        );
+      }
+
+      if (item?.dishes?.length > 0) {
+        for (const dish of item.dishes) {
+          await printer.print(
+            formatearCadena(
+              ` + Comp: ${dish.dishesName.toUpperCase()}`,
+              27,
+              ' ',
+              0,
+            ),
+          );
+          await printer.print(
+            ` $${formatearCadena(dish.prices[dishesIndex].price.toFixed(2).toString(), 8, ' ', 0)}`,
+          );
+          await printer.print(
+            ` $${formatearCadena((dish.prices[dishesIndex].price.toFixed(2) * item.quantity).toFixed(2).toString(), 9, ' ', 0)}`,
+          );
+        }
+      }
+
+      // if (item?.modifiers?.length > 0) {
+      //   for (const modifier of item.modifiers) {
+      //     await printer.print(
+      //       formatearCadena(
+      //         ` > ${modifier.modifierName.toUpperCase()}`,
+      //         42,
+      //         ' ',
+      //         0,
+      //       ),
+      //     );
+      //     await printer.print(formatearCadena('', 6, ' ', 0));
+      //   }
+      // }
+    }
+
+    printer.newLine();
     await printImage(await getIMagePath('dividerTicket.png'));
 
-    printer.println('');
-
     printer.alignLeft();
-    printer.println('11 Productos');
+    printer.bold(true);
+    printer.println(
+      `${body.products.reduce((acc, product) => acc + product.quantity, 0)} productos.`,
+    );
+    printer.bold(false);
 
     printer.println('');
 
-    printer.alignCenter();
-    printer.leftRight('Subtotal', '$0,000.00');
-    printer.leftRight('Subtotal', '10% -$0,000.00');
-    printer.leftRight('Subtotal', '10% -$0,000.00');
-    printer.leftRight('Subtotal', '10% -$0,000.00');
+    // printer.alignCenter();
+    printer.leftRight('Subtotal', `$${formatToCurrency(checkTotal)}`);
+    if (body?.discount) {
+      printer.leftRight('Descuento', '10% -$0,000.00');
+    }
+    printer.leftRight('IVA', '   $0.00');
 
     printer.println('');
     printer.bold(true);
-    printer.leftRight('Total por pagar', '$0,000.00');
+    printer.leftRight('Total por pagar', `$${formatToCurrency(checkTotal)}`);
     printer.bold(false);
     printer.setTextNormal();
-    printer.alignRight();
-    printer.println('(cantidad en texto/mxn)');
+    printer.print(moneyToLetter(checkTotal));
 
-    printer.println('');
-
-    printer.alignCenter();
-    printer.leftRight('Dolar', '$00.00');
-
-    printer.println('');
+    printer.newLine();
+    printer.newLine();
 
     printer.alignLeft();
+    printer.bold(true);
+    printer.underline(true);
     printer.println('Propina no incluida');
+    printer.underline(false);
+    printer.bold(false);
 
-    printer.println('');
+    //////////////////////////////////////////////
+    /*ACA TODA LA LOGICA DE LOS TICKETS PAGADOS */
+    //////////////////////////////////////////////
 
-    printer.println(
-      'Si requiere factura favor de indicarle al mesero o solicitarla por whatsapp: 333-446-5374',
-    );
+    if (body?.payed) {
+      printer.newLine();
+      printer.alignCenter();
+      await printImage(await getIMagePath('payment.png'));
+      printer.newLine();
 
-    printer.println('');
+      printer.println(
+        'Si requiere factura favor de indicarle al mesero o solicitarla por whatsapp: 333-446-5374',
+      );
+    }
+    /////////////////////////////////////////////
+    ////////////////////////////////////////////////
 
     printer.alignCenter();
     await printImage(await getIMagePath('dividerTicket.png'));
@@ -129,15 +231,11 @@ export const printOnSiteAction = async (printer: any, body: any) => {
 
     return 'Ticket impreso correctamente';
   } catch (error) {
+    console.log(error);
     // Loguear el error y manejarlo de manera adecuada
-    console.error('Error al imprimir el ticket:', error);
-
-    // Check if the error is a Printer Error
     if (error.message === 'Printer Error') {
-      // Handle Printer Error
       throw new Error('Error al imprimir el ticket: Error en la impresora');
     } else {
-      // Handle other errors
       throw new Error('Error al imprimir el ticket');
     }
   }

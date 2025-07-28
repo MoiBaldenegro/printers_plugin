@@ -34,12 +34,12 @@ export const printCloseCashierSessionAction = async (
     printer.bold(true);
     printer.println('CIERRE DE CAJA');
     printer.bold(false);
-    printer.println(`Ventas del dia: ${body.openDate.slice(10) ?? "aca"}`);
+    printer.println(`Ventas del dia: ${body.openDate.slice(0, 10) ?? 'aca'}`);
 
     printer.newLine();
 
     printer.alignLeft();
-    printer.println(`Usuario: ${body.userName ?? replacementText}`);
+    printer.println(`Usuario: ${body.authFor ?? 'No identificado'}`);
     printer.println(`Fecha ${body.date ?? replacementText}`);
 
     printer.newLine();
@@ -53,9 +53,9 @@ export const printCloseCashierSessionAction = async (
     printer.bold(true);
     printer.println(`Folio: ${body.folio.toUpperCase() ?? replacementText}`);
     printer.println(`Terminal: ${terminalName ?? replacementText} `);
-    printer.println(`Cajero: ${body.userName ?? "aca"}`);
-    printer.println(`Apertura: ${body.openDate ?? "aca"}`);
-    printer.println(`Cierre: ${body.closeDate ?? "aca"}`);
+    printer.println(`Cajero: ${body.userName ?? 'aca'}`);
+    printer.println(`Apertura: ${body.openDate ?? 'aca'}`);
+    printer.println(`Cierre: ${body.closeDate ?? 'aca'}`);
     printer.bold(false);
 
     printer.newLine();
@@ -77,6 +77,10 @@ export const printCloseCashierSessionAction = async (
     printer.leftRight(
       'Transferencia',
       `$${formatToCurrency(body?.sessionCount?.transfer) ?? replacementText}`,
+    );
+    printer.leftRight(
+      'Código QR',
+      `$${formatToCurrency(body?.sessionCount?.qr) ?? replacementText}`,
     );
 
     printer.newLine();
@@ -101,15 +105,18 @@ export const printCloseCashierSessionAction = async (
       `   $${formatToCurrency(body?.sellsCount?.cash) ?? replacementText}`,
     );
     printer.leftRight(
-      'Tarjeta de débito',
+      'Tarjetas',
       `   $${formatToCurrency(body?.sellsCount?.targets) ?? replacementText}`,
     );
-  
+
     printer.leftRight(
       'Transferencia',
       `   $${formatToCurrency(body?.sellsCount?.transferences) ?? replacementText}`,
     );
-   
+    printer.leftRight(
+      'Código QR',
+      `   $${formatToCurrency(body?.sellsCount?.qr) ?? replacementText}`,
+    );
 
     printer.newLine();
 
@@ -123,6 +130,46 @@ export const printCloseCashierSessionAction = async (
     printer.newLine();
 
     printer.underline(true);
+    printer.println('Retiros de efectivo');
+    printer.underline(false);
+
+    printer.newLine();
+
+    if (body.cashWithdraws.length > 0) {
+      body.cashWithdraws.forEach((withdraw, index) => {
+        const formattedDate = new Date(withdraw.createdAt).toLocaleString(
+          'es-MX',
+          {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false, // Usa formato 24h
+          },
+        );
+
+        printer.leftRight(
+          `${index + 1} ${formattedDate}`,
+          `$${formatToCurrency(withdraw.quantity)}`,
+        );
+      });
+    }
+
+    printer.newLine();
+
+    // aca vamos maquetar toda la parte de los retiros de efgectivco
+    printer.bold(true);
+    printer.leftRight(
+      `Total de retiros: ${body.cashWithdraws.length}`,
+      `$${formatToCurrency(body.totalWithdraws)}`,
+    );
+    printer.bold(false);
+
+    printer.newLine();
+
+    printer.underline(true);
     printer.print('Resumen');
     printer.underline(false);
 
@@ -130,25 +177,29 @@ export const printCloseCashierSessionAction = async (
 
     printer.leftRight(
       'Efectivo',
-      `${parseFloat(body?.summary?.cash) > 0 ? '-' : parseFloat(body?.summary?.cash) < 0  ? "+": ''} $${(parseFloat(body?.summary?.cash) < 0 ? formatToCurrency(body?.summary?.cash * -1) : formatToCurrency(body?.summary?.cash)) ?? replacementText}`,
+      `${parseFloat(body?.summary?.cash) > 0 ? '-' : parseFloat(body?.summary?.cash) < 0 ? '+' : ''} $${(parseFloat(body?.summary?.cash) < 0 ? formatToCurrency(body?.summary?.cash * -1) : formatToCurrency(body?.summary?.cash)) ?? replacementText}`,
     );
     printer.leftRight(
       'Tarjetas',
-      `${parseFloat(body?.summary?.targets) > 0 ? '-' : parseFloat(body?.summary?.targets) < 0 ? '+' : ''} $${ parseFloat(body?.summary?.targets) < 0 ? formatToCurrency(body?.summary?.targets * -1):(formatToCurrency(body?.summary?.targets)) ?? replacementText}`,
+      `${parseFloat(body?.summary?.targets) > 0 ? '-' : parseFloat(body?.summary?.targets) < 0 ? '+' : ''} $${parseFloat(body?.summary?.targets) < 0 ? formatToCurrency(body?.summary?.targets * -1) : (formatToCurrency(body?.summary?.targets) ?? replacementText)}`,
     );
- 
+
     printer.leftRight(
       'Transferencia',
-      `${parseFloat(body?.summary?.transferences) > 0 ? '-' : parseFloat(body?.summary?.transferences) < 0 ? '+' :''} $${(parseFloat(body?.summary?.transferences) < 0 ? formatToCurrency(body?.summary?.transferences * -1) :formatToCurrency(body?.summary?.transferences)) ?? replacementText}`,
+      `${parseFloat(body?.summary?.transferences) > 0 ? '-' : parseFloat(body?.summary?.transferences) < 0 ? '+' : ''} $${(parseFloat(body?.summary?.transferences) < 0 ? formatToCurrency(body?.summary?.transferences * -1) : formatToCurrency(body?.summary?.transferences)) ?? replacementText}`,
     );
-   
+    printer.leftRight(
+      'Código QR',
+      `${parseFloat(body?.summary?.qr) > 0 ? '-' : parseFloat(body?.summary?.qr) < 0 ? '+' : ''} $${(parseFloat(body?.summary?.qr) < 0 ? formatToCurrency(body?.summary?.qr * -1) : formatToCurrency(body?.summary?.qr)) ?? replacementText}`,
+    );
+
     printer.newLine();
 
     // aca si va ir el summary total
     printer.bold(true);
     printer.leftRight(
       'Total',
-      `${parseFloat(body?.summary?.total) > 0 ? '-' : parseFloat(body?.summary?.total) < 0 ? '+' : ''} $${(parseFloat(body?.summary?.total) < 0 ? formatToCurrency(body?.summary?.total  * -1) :  formatToCurrency(body?.summary?.total)) ?? replacementText}`,
+      `${parseFloat(body?.summary?.total) > 0 ? '+' : parseFloat(body?.summary?.total) < 0 ? '-' : ''} $${(parseFloat(body?.summary?.total) < 0 ? formatToCurrency(body?.summary?.total * -1) : formatToCurrency(body?.summary?.total)) ?? replacementText}`,
     );
     printer.bold(true);
 

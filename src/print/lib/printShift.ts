@@ -1,6 +1,7 @@
 import { ThermalPrinter } from 'node-thermal-printer';
 import * as path from 'path';
 import { restaurantDetails } from '../utils/format';
+import { calculateTempo } from './calculateTimes';
 
 export const printshiftAction = async (printer: ThermalPrinter, body: any) => {
   const imagePath = path.join(
@@ -26,29 +27,66 @@ export const printshiftAction = async (printer: ThermalPrinter, body: any) => {
     printer.println(restaurantDetails[0]);
     printer.println(restaurantDetails[1]);
     printer.println(restaurantDetails[2]);
+    printer.println(
+      ` ${new Date(body?.registerData?.createdAt).toLocaleDateString()}`,
+    );
 
     printer.println('');
 
     printer.alignLeft();
-    printer.println(`Fecha ${new Date().toISOString()}`);
+    printer.println(new Date().toLocaleString());
 
     printer.alignCenter();
     await printImage(dividerImgPath);
 
-    const now = new Date();
+    printer.newLine();
 
-    // Extraer horas y minutos
-    const hours = now.getHours(); // Horas en formato 24 horas
-    const minutes = now.getMinutes(); // Minutos
-    // Formatear para asegurarte de que siempre tenga 2 dígitos
-    const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-
-    printer.println('');
-
+    printer.underline(true);
     printer.println(body.username);
-    printer.println(formattedTime);
+    printer.underline(false);
+    printer.newLine();
 
-    printer.println('');
+    if (body?.registerData?.firstTime) {
+      printer.leftRight(
+        `Inicio de turno:`,
+        `${body.registerData.firstTime.slice(0, 8)}`,
+      );
+    }
+    if (body?.registerData?.secondTime) {
+      printer.leftRight(
+        `Salida:`,
+        `${body.registerData.secondTime.slice(0, 8)}`,
+      );
+    }
+    if (body?.registerData?.thirdTime) {
+      printer.leftRight(
+        `Regreso:`,
+        `${body.registerData.thirdTime.slice(0, 8)}`,
+      );
+    }
+    if (body?.registerData?.fourthTime) {
+      const { firstTime, secondTime, thirdTime, fourthTime, createdAt } =
+        body.registerData;
+      const tempo = calculateTempo({
+        firstTime,
+        secondTime,
+        thirdTime,
+        fourthTime,
+        createdAt,
+      });
+
+      printer.leftRight(
+        `Fin de turno:`,
+        `${body.registerData.fourthTime.slice(0, 8)}`,
+      );
+
+      if (tempo !== '--') {
+        printer.leftRight('Tiempo trabajado:', `${tempo.tiempoTotal}`);
+        printer.leftRight('Tiempo de receso:', `${tempo.tiempoDescanso}`);
+      }
+    }
+
+    printer.newLine();
 
     printer.alignCenter();
     await printImage(dividerImgPath);

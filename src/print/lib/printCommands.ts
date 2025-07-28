@@ -1,10 +1,16 @@
+import { formatearCadena } from '../utils/format';
 import { formatDate } from './formatDate';
 import { getIMagePath } from './getImage';
 
-export const printCommandsAction = async (printer: any, productsArray: any) => {
+export const printCommandsAction = async (
+  printer: any,
+  productsArray: any,
+  user: string | undefined,
+  table?: string,
+  sellType?: string,
+) => {
   printer.setTextQuadArea();
 
-  // Función para imprimir una imagen y manejar errores
   const printImage = async (imagePath: string) => {
     try {
       await printer.printImage(imagePath);
@@ -17,7 +23,10 @@ export const printCommandsAction = async (printer: any, productsArray: any) => {
   printer.println(date);
   printer.newLine();
   printer.bold(true);
-  printer.println('#### Moises B.  Mesa ##');
+  printer.println(
+    `${formatearCadena(user ?? 'unknown', 16, '-', 0)} ${table ? `Mesa ${table}` : ''}`, //TENBEMOS UNA FUNCION APRA FORMATEAR ESTO
+    '',
+  );
   printer.newLine();
   printer.bold(false);
 
@@ -28,16 +37,30 @@ export const printCommandsAction = async (printer: any, productsArray: any) => {
 
   printer.alignLeft();
   printer.setTextQuadArea();
-  productsArray.forEach((item) => {
-    printer.println(
+
+  for (const item of productsArray) {
+    await printer.println(
       `${item.quantity.toString().padStart(2, '0')} ${item.productName}`.toUpperCase(),
     );
-  });
+    if (item?.dishes?.length > 0) {
+      for (const dish of item.dishes) {
+        await printer.println(` + ${dish.dishesName.toUpperCase()}`);
+      }
+    }
+    if (item?.modifiers?.length > 0) {
+      for (const modifier of item.modifiers) {
+        await printer.println(` > ${modifier.modifierName.toUpperCase()}`);
+      }
+    }
+
+    printer.print(formatearCadena('', 24, '.', 0));
+    printer.println(' ');
+  }
 
   printer.alignRight();
   printer.newLine();
   printer.bold(true);
-  printer.println('RESTAURANTE');
+  printer.println(`${sellType ?? 'Restaurante'}`, '.');
   printer.newLine();
   printer.setTextNormal();
   printer.bold(false);
