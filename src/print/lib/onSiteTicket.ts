@@ -19,7 +19,7 @@ export const printOnSiteAction = async (printer: any, body: any) => {
           : 'ON_SITE';
   const dishesIndex = body?.sellType === 'RAPPI_ORDER' ? 3 : 0;
 
-  const date = new Date().toLocaleDateString('MX-mx');
+  const date = new Date().toLocaleString('MX-mx');
   const products = body?.products;
   const userName = `${body.userCode} ${body?.user}`;
   const billCode = body?.code;
@@ -176,6 +176,8 @@ export const printOnSiteAction = async (printer: any, body: any) => {
 
     printer.println('');
 
+    // Logica de propina
+
     // printer.alignCenter();
     printer.leftRight('Subtotal', `$${formatToCurrency(checkTotal)}`);
     if (body?.discount) {
@@ -183,12 +185,22 @@ export const printOnSiteAction = async (printer: any, body: any) => {
     }
     printer.leftRight('IVA', '   $0.00');
 
+    printer.setTextQuadArea();
+
     printer.println('');
     printer.bold(true);
-    printer.leftRight('Total por pagar', `$${formatToCurrency(checkTotal)}`);
+    printer.alignCenter();
+    printer.println(`Total por pagar:`);
+    printer.println(`$${formatToCurrency(checkTotal)}`);
+    printer.alignLeft();
+
+    printer.newLine();
+
     printer.bold(false);
     printer.setTextNormal();
     printer.print(moneyToLetter(checkTotal));
+
+    printer.setTextNormal();
 
     printer.newLine();
     printer.newLine();
@@ -214,6 +226,7 @@ export const printOnSiteAction = async (printer: any, body: any) => {
         'Si requiere factura favor de indicarle al mesero o solicitarla por whatsapp: 333-446-5374',
       );
     }
+
     /////////////////////////////////////////////
     ////////////////////////////////////////////////
 

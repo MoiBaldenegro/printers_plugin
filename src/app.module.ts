@@ -4,9 +4,10 @@ import { AppService } from './app.service';
 import { PrintModule } from './print/print.module';
 import { CronModule } from './cron/cron.module';
 import { ConfigModule } from './config/config.module';
+import { SellsReportModule } from './sells-report/sells-report.module';
 
 @Module({
-  imports: [PrintModule, CronModule, ConfigModule],
+  imports: [PrintModule, CronModule, ConfigModule, SellsReportModule],
   controllers: [AppController],
   providers: [AppService],
 })

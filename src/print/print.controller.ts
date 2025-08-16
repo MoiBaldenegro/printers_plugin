@@ -95,10 +95,33 @@ export class PrintController {
     }
   }
 
+  // new-payment-ticket
   @Post('billPrint')
   async printBillTicket(@Body() data: any): Promise<string> {
     try {
       const response = await this.printService.printOnSiteTicket(data);
+      return 'Ticket impreso correctamente';
+    } catch (error) {
+      throw new NotFoundException('No se completo la impresion');
+    }
+  }
+
+  // new-payment-ticket
+  @Post('new-payment-note')
+  async printBillTicketNote(@Body() data: any): Promise<string> {
+    try {
+      const response =
+        await this.printService.printNoteTicketOrderService(data);
+      return 'Ticket impreso correctamente';
+    } catch (error) {
+      throw new NotFoundException('No se completo la impresion');
+    }
+  }
+
+  @Post('new-payment-ticket')
+  async printNewPaymentTicketController(@Body() data: any): Promise<string> {
+    try {
+      const response = await this.printService.printNewTicketOrderService(data);
       return 'Ticket impreso correctamente';
     } catch (error) {
       throw new NotFoundException('No se completo la impresion');
@@ -131,8 +154,6 @@ export class PrintController {
 
   @Post('cashier-session/close')
   async cashierSessionClose(@Body() body: any): Promise<string> {
-    console.log('Esto llega por aca');
-    console.log(body);
     try {
       const response = await this.printService.printCloseCashierSesison(body);
       return 'Ticket impreso correctamente';

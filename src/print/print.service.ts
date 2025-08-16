@@ -16,10 +16,12 @@ import { printOpenCashierSession } from './lib/reports/printOpenCashierSession';
 import { printNewWithdraw } from './lib/reports/printNewWithdraw';
 import { printTestSheetAction } from './lib/health/printersTestSheet';
 import formatSellType from './lib/formatSellType';
+import { printNewPaymentTicketAction } from './lib/printNewPaymentTicket';
+import { printNewPaymentNoteTicketAction } from './lib/printNewPaymentNoteTicket';
 
 @Injectable()
 export class PrintService {
-  private async createPrinter(ip: string) {
+  async createPrinter(ip: string) {
     return new ThermalPrinter({
       type: PrinterTypes.EPSON,
       interface: `tcp://${ip}`,
@@ -33,7 +35,6 @@ export class PrintService {
   }
 
   // crearemos una funcion para leer  el archiuvo de configuracion
-
   private async readConfig() {
     const filePath = path.join(process.cwd(), 'devicerc.json');
     try {
@@ -81,7 +82,6 @@ export class PrintService {
   }
 
   // ocupo saber la ip
-
   async printshift(body: any) {
     try {
       const readConfig = await this.getTcpIp();
@@ -152,6 +152,97 @@ export class PrintService {
       throw new NotFoundException(`${error}`);
     }
   }
+
+  async printNewTicketOrderService(body: any) {
+    const payment = body;
+    try {
+      const { config } = await this.readConfig();
+      const readConfig = await this.getTcpIp();
+      const printer = await this.createPrinter(readConfig);
+      if (!printer) {
+        console.warn(`No se pudo crear la impresora para TCP: ${readConfig}`);
+        return;
+      }
+      await printNewPaymentTicketAction(printer, payment);
+
+      const printerArray = config.printersArray;
+      const printerAuth = printerArray.filter((printer_) => {
+        return printer_?.printActions?.includes('PRINT_ONSITE_ORDER_TICKET');
+      });
+
+      await Promise.allSettled(
+        printerAuth.map(async (printer_i) => {
+          try {
+            const printer = await this.createPrinter(printer_i.tcp);
+            if (!printer) {
+              console.warn(
+                `No se pudo crear la impresora para TCP: ${printer_i.tcp}`,
+              );
+              return;
+            }
+            await printNewPaymentTicketAction(printer, payment);
+            console.log(`Impresión exitosa en ${printer_i.printerName}`);
+          } catch (error) {
+            console.error(
+              `Error imprimiendo en impresora ${printer_i.printerName}:`,
+              error,
+            );
+          }
+        }),
+      );
+    } catch (error) {
+      console.log('Entre a este error');
+      console.log(error);
+      throw new NotFoundException(`${error}`);
+    }
+  }
+
+  async printNoteTicketOrderService(body: any) {
+    // hayq ue crear una copia del ticket aca espeicalmente pára las notas
+    // por aca nos quedamos el tema de la IMPRESIOND E TICKETR DE NOTAS QU ENO S ENOS OLVIDE POR QUE VAMOS A IR EL FRONT  CREAR UN NUEVO SERVICIO;
+    const payment = body;
+    try {
+      const { config } = await this.readConfig();
+      const readConfig = await this.getTcpIp();
+      const printer = await this.createPrinter(readConfig);
+      if (!printer) {
+        console.warn(`No se pudo crear la impresora para TCP: ${readConfig}`);
+        return;
+      }
+      await printNewPaymentNoteTicketAction(printer, payment);
+
+      const printerArray = config.printersArray;
+      const printerAuth = printerArray.filter((printer_) => {
+        return printer_?.printActions?.includes('PRINT_ONSITE_ORDER_TICKET');
+      });
+
+      await Promise.allSettled(
+        printerAuth.map(async (printer_i) => {
+          try {
+            const printer = await this.createPrinter(printer_i.tcp);
+            if (!printer) {
+              console.warn(
+                `No se pudo crear la impresora para TCP: ${printer_i.tcp}`,
+              );
+              return;
+            }
+            await printNewPaymentNoteTicketAction(printer, payment);
+            console.log(`Impresión exitosa en ${printer_i.printerName}`);
+          } catch (error) {
+            console.error(
+              `Error imprimiendo en impresora ${printer_i.printerName}:`,
+              error,
+            );
+          }
+        }),
+      );
+    } catch (error) {
+      console.log('Entre a este error');
+      console.log(error);
+      throw new NotFoundException(`${error}`);
+    }
+  }
+
   async printCommands(body: any) {
     const user = `${body.userCode} ${body.user.split(' ')[0]} ${body.user.split(' ')[1]}`;
     const table = body?.tableNum;
