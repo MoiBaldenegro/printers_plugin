@@ -1,12 +1,10 @@
-import { formatearCadena } from '../utils/format';
-import { formatDate } from './formatDate';
-import { getIMagePath } from './getImage';
+import { getIMagePath } from 'src/print/lib/getImage';
+import { formatearCadena } from 'src/print/utils/format';
 
-export const printCommandsAction = async (
+export const printDeliveryConsolidatedCommandsAction = async (
   printer: any,
   productsArray: any,
   user: string | undefined,
-  table?: string,
   sellType?: string,
 ) => {
   printer.setTextQuadArea();
@@ -24,7 +22,7 @@ export const printCommandsAction = async (
   printer.newLine();
   printer.bold(true);
   printer.println(
-    `${formatearCadena(user ?? 'unknown', 16, '-', 0)} ${table ? `Mesa ${table}` : ''}`, //TENBEMOS UNA FUNCION APRA FORMATEAR ESTO
+    `${formatearCadena(user ?? 'unknown', 16, '-', 0)} `, //TENBEMOS UNA FUNCION APRA FORMATEAR ESTO
     '',
   );
   printer.newLine();

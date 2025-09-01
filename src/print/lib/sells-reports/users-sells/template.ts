@@ -1,5 +1,6 @@
 import { ThermalPrinter } from 'node-thermal-printer';
 import { printUserAllSalesAction } from './printUserAllSalesAction';
+import { printMojeAction } from './printMojeAction';
 
 export interface User {
   name: string;
@@ -55,6 +56,12 @@ export abstract class UsersSellsTemplate {
     printUserAllSalesAction(printer, registers, total);
   }
 
+  printMoje(state: State, printer: ThermalPrinter, percent: number) {
+    const registers = state.registers;
+    const total = state.total;
+    printMojeAction(printer, registers, total, percent);
+  }
+
   executeTemplate(printer: ThermalPrinter) {
     const filteredUsers: User[] = this.filterUserSells();
     const registers: UserSells[] = filteredUsers.map((user) =>
@@ -63,5 +70,15 @@ export abstract class UsersSellsTemplate {
     const total: number = this.calculateTotal(registers);
     const state: State = this.formatData(registers, total);
     this.printReport(state, printer);
+  }
+
+  executeMojeTemplate(printer: ThermalPrinter, percent: number) {
+    const filteredUsers: User[] = this.filterUserSells();
+    const registers: UserSells[] = filteredUsers.map((user) =>
+      this.buildRegister(user),
+    );
+    const total: number = this.calculateTotal(registers);
+    const state: State = this.formatData(registers, total);
+    this.printMoje(state, printer, percent);
   }
 }

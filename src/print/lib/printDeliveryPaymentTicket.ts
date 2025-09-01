@@ -7,42 +7,34 @@ import { setRevolveAction } from './transactionsResume';
 import { formatPaymentType, PaymentType } from './formatPaymentType';
 import { calculateTips } from './calculateTips';
 
-export const printNewPaymentNoteTicketAction = async (
+export const printDeliveryPaymentTicketAction = async (
   printer: any,
-  bodyData: any,
+  body: any,
 ) => {
-  console.log(bodyData);
-  const body = bodyData.note;
-  const bill = bodyData.bill;
-  const order = body;
-
-  const payNote = bill?.payment?.filter(
-    (payment) => payment._id === order?.paymentCode,
-  );
-  let payment = payNote[0];
-  if (order?.paymentCode === 'NP') {
-    payment = bodyData.payment;
-  }
+  const order = body.order;
+  const payment = body.payment;
+  const payed = true;
   const transactions = payment?.transactions;
+  console.log(body);
   const completeLine = (number: number) => {
     const str = ''.padEnd(number, ' ');
     return printer.print(str);
   };
-  // hay que vcer que hacemos con el array aqui
   const sellType =
-    body?.sellType === 'RAPPI_ORDER'
+    order?.sellType === 'RAPPI_ORDER'
       ? 'RAPPI'
-      : body?.sellType === 'PHONE_ORDER'
+      : order?.sellType === 'PHONE_ORDER'
         ? 'PHONE'
-        : body?.sellType === 'TOGO_ORDER'
+        : order?.sellType === 'TOGO_ORDER'
           ? 'TOGO'
           : 'ON_SITE';
+
   const dishesIndex = order?.sellType === 'RAPPI_ORDER' ? 3 : 0;
 
   const date = new Date().toLocaleString('MX-mx');
   const products = order?.products;
   const userName = `${order?.user}`;
-  const billCode = bill?.code;
+  const billCode = order?.code;
   const checkTotal = calculateBillTotal(
     order.products,
     order.discount,
@@ -92,7 +84,7 @@ export const printNewPaymentNoteTicketAction = async (
     printer.bold(true);
     printer.print(`Cuenta:${billCode}`.padEnd(41, ' '));
     if (body?.noteNumber) {
-      printer.print(`Nota:${body?.noteNumber}`);
+      printer.print(`Nota: ${body?.noteNumber}`);
     } else {
       completeLine(7);
     }
@@ -235,7 +227,7 @@ export const printNewPaymentNoteTicketAction = async (
           revolve = data.totalQuantity - data.totalPayQuantity;
         }
         await printer.leftRight(
-          `${formatPaymentType(paymentType as PaymentType)}:    Recibido: $${formatToCurrency(data.totalQuantity)}`,
+          `${formatPaymentType(paymentType as PaymentType)}:      Recibido: $${formatToCurrency(data.totalQuantity)}`,
           ` $${formatToCurrency(data.totalPayQuantity)}`,
         );
         continue;
@@ -336,8 +328,8 @@ export const printNewPaymentNoteTicketAction = async (
     if (error.message === 'Printer Error') {
       throw new Error('Error al imprimir el ticket: Error en la impresora');
     } else {
-      console.error(error);
-      throw new Error('Error al imprimir el ticket');
+      console.log(error);
+      throw new Error(`Error al imprimir el ticket ${error.message}`);
     }
   }
 };

@@ -18,6 +18,8 @@ import { printTestSheetAction } from './lib/health/printersTestSheet';
 import formatSellType from './lib/formatSellType';
 import { printNewPaymentTicketAction } from './lib/printNewPaymentTicket';
 import { printNewPaymentNoteTicketAction } from './lib/printNewPaymentNoteTicket';
+import { printDeliveryPaymentTicketAction } from './lib/printDeliveryPaymentTicket';
+import { PrintActions } from 'src/types/auths.types';
 
 @Injectable()
 export class PrintService {
@@ -35,7 +37,7 @@ export class PrintService {
   }
 
   // crearemos una funcion para leer  el archiuvo de configuracion
-  private async readConfig() {
+  async readConfig() {
     const filePath = path.join(process.cwd(), 'devicerc.json');
     try {
       // Leer el archivo JSON
@@ -120,10 +122,12 @@ export class PrintService {
         return;
       }
       await printOnSiteAction(printer, body);
-
       const printerArray = config.printersArray;
+      console.log(printerArray);
       const printerAuth = printerArray.filter((printer_) => {
-        return printer_?.printActions?.includes('PRINT_ONSITE_ORDER_TICKET');
+        return printer_?.printActions?.includes(
+          PrintActions.REPRINT_FOR_PAY_ORDER_ONSITE,
+        );
       });
 
       await Promise.allSettled(
@@ -167,7 +171,9 @@ export class PrintService {
 
       const printerArray = config.printersArray;
       const printerAuth = printerArray.filter((printer_) => {
-        return printer_?.printActions?.includes('PRINT_ONSITE_ORDER_TICKET');
+        return printer_?.printActions?.includes(
+          PrintActions.REPRINT_ONSITE_ORDER_TICKET,
+        );
       });
 
       await Promise.allSettled(
@@ -181,6 +187,48 @@ export class PrintService {
               return;
             }
             await printNewPaymentTicketAction(printer, payment);
+            console.log(`Impresión exitosa en ${printer_i.printerName}`);
+          } catch (error) {
+            console.error(
+              `Error imprimiendo en impresora ${printer_i.printerName}:`,
+              error,
+            );
+          }
+        }),
+      );
+    } catch (error) {
+      console.log('Entre a este error');
+      console.log(error);
+      throw new NotFoundException(`${error}`);
+    }
+  }
+  async printDeliveryOrderService(body: any) {
+    try {
+      const { config } = await this.readConfig();
+      const readConfig = await this.getTcpIp();
+      const printer = await this.createPrinter(readConfig);
+      if (!printer) {
+        console.warn(`No se pudo crear la impresora para TCP: ${readConfig}`);
+        return;
+      }
+      await printDeliveryPaymentTicketAction(printer, body);
+
+      const printerArray = config.printersArray;
+      const printerAuth = printerArray.filter((printer_) => {
+        return printer_?.printActions?.includes('PRINT_ONSITE_ORDER_TICKET');
+      });
+
+      await Promise.allSettled(
+        printerAuth.map(async (printer_i) => {
+          try {
+            const printer = await this.createPrinter(printer_i.tcp);
+            if (!printer) {
+              console.warn(
+                `No se pudo crear la impresora para TCP: ${printer_i.tcp}`,
+              );
+              return;
+            }
+            await printDeliveryPaymentTicketAction(printer, body);
             console.log(`Impresión exitosa en ${printer_i.printerName}`);
           } catch (error) {
             console.error(

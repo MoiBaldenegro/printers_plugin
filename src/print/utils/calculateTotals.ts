@@ -44,7 +44,9 @@ export const calculateProductTotal = (
 ): number => {
   if (!product) return 0;
   const { quantity, prices, dishes, discount } = product;
-  const priceIndex = prices.findIndex((price) => price.name === sellType) ?? 0;
+  // const priceIndex = prices.findIndex((price) => price.name === sellType) ?? 0;
+  const priceIndex = 0;
+  // esto de los dishes modificaremos cuando ocupemos complementos y modificadores con diferentes precios en otros tipos de ventas
   const dishesPriceIndex = sellType === 'RAPPI' ? 3 : 0;
 
   // Calcula el total del producto base (sin dishes).

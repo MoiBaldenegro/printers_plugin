@@ -4,7 +4,6 @@ import { getIMagePath } from './getImage';
 import { moneyToLetter } from 'src/utils/moneyToLetter';
 import { calculateBillTotal } from '../utils/calculateTotals';
 import { setRevolveAction } from './transactionsResume';
-import formatSellType from './formatSellType';
 import { formatPaymentType, PaymentType } from './formatPaymentType';
 import { calculateTips } from './calculateTips';
 
@@ -12,8 +11,6 @@ export const printNewPaymentTicketAction = async (printer: any, body: any) => {
   const order = body.accountId;
   const payment = body;
   const transactions = payment?.transactions;
-  console.log('ESATAS SON LAS TRANSACCIONES');
-  console.log(transactions);
   const completeLine = (number: number) => {
     const str = ''.padEnd(number, ' ');
     return printer.print(str);
@@ -105,8 +102,10 @@ export const printNewPaymentTicketAction = async (printer: any, body: any) => {
     await printImage(await getIMagePath('dividerTicket.png'));
     for (const item of productsArray) {
       const { prices } = item;
-      const selectedPriceIndex =
-        prices.findIndex((price) => price.name === sellType) ?? 0;
+      // const selectedPriceIndex =
+      //   prices.findIndex((price) => price.name === sellType) ?? 0;
+      const selectedPriceIndex = 0;
+
       if (
         !item.prices ||
         !Array.isArray(item.prices) ||

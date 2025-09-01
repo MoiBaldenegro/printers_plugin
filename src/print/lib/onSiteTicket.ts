@@ -21,8 +21,8 @@ export const printOnSiteAction = async (printer: any, body: any) => {
 
   const date = new Date().toLocaleString('MX-mx');
   const products = body?.products;
-  const userName = `${body.userCode} ${body?.user}`;
-  const billCode = body?.code;
+  const userName = `${body.userCode ?? ''} ${body?.user ?? ''}`;
+  const billCode = body?.code ?? body.checkCode ?? 'n/a';
   const checkTotal = calculateBillTotal(body.products, body.discount, sellType);
 
   if (!Array.isArray(products) || products.length === 0) {
@@ -68,13 +68,21 @@ export const printOnSiteAction = async (printer: any, body: any) => {
     printer.bold(true);
     printer.print(`Cuenta:${billCode}`.padEnd(41, ' '));
     if (body?.noteNumber) {
-      printer.print('Note:00');
+      printer.print(`Nota:${body.noteNumber}`);
     } else {
       completeLine(7);
     }
     printer.bold(false);
 
     printer.newLine();
+
+    printer.alignLeft();
+    if (
+      body?.orderName &&
+      (body?.sellType === 'PHONE_ORDER' || body?.sellType === 'TOGO_ORDER')
+    ) {
+      printer.println(`Nombre: ${body?.orderName}`);
+    }
 
     printer.setTextNormal();
 
@@ -92,8 +100,9 @@ export const printOnSiteAction = async (printer: any, body: any) => {
     await printImage(await getIMagePath('dividerTicket.png'));
     for (const item of productsArray) {
       const { prices } = item;
-      const selectedPriceIndex =
-        prices.findIndex((price) => price.name === sellType) ?? 0;
+      // const selectedPriceIndex =
+      //   prices.findIndex((price) => price.name === sellType) ?? 0;
+      const selectedPriceIndex = 0;
       if (
         !item.prices ||
         !Array.isArray(item.prices) ||

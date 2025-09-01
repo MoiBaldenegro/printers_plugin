@@ -26,7 +26,6 @@ import {
   userInformation,
 } from './utils/format';
 
-import * as path from 'path';
 import { PrintService } from './print.service';
 
 @Controller('print')
@@ -95,7 +94,7 @@ export class PrintController {
     }
   }
 
-  // new-payment-ticket
+  // este se usa por pagar
   @Post('billPrint')
   async printBillTicket(@Body() data: any): Promise<string> {
     try {
@@ -120,8 +119,21 @@ export class PrintController {
 
   @Post('new-payment-ticket')
   async printNewPaymentTicketController(@Body() data: any): Promise<string> {
+    console.log(Body);
     try {
       const response = await this.printService.printNewTicketOrderService(data);
+      return 'Ticket impreso correctamente';
+    } catch (error) {
+      throw new NotFoundException('No se completo la impresion');
+    }
+  }
+
+  @Post('delivery/new-payment-ticket')
+  async printDeliveryPaymentTicketController(
+    @Body() data: any,
+  ): Promise<string> {
+    try {
+      const response = await this.printService.printDeliveryOrderService(data);
       return 'Ticket impreso correctamente';
     } catch (error) {
       throw new NotFoundException('No se completo la impresion');
